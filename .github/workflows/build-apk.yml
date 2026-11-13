@@ -30,16 +30,21 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
-      # compileSdk/targetSdk are 36 in this port: AGP 8.13.2 supports up to API
-      # 36, and API 37 needs AGP 9.1.1+ which conflicts with kotlin-android.
-      # The :terminal module compiles C++ through CMake, so NDK + CMake are
-      # required even though :app no longer builds native code.
+      # The ubuntu-latest image already ships the Android SDK at
+      # $ANDROID_HOME. We deliberately do NOT use android-actions/setup-android:
+      # it runs `sdkmanager tools`, and the "tools" package was removed from
+      # Google's repository, so that action fails with
+      # "Warning: Failed to find package 'tools'" before any build starts.
       - name: Install SDK packages
         run: |
-          sdkmanager --install \
+          set -euo pipefail
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          if [ ! -x "$SDKMANAGER" ]; then
+            SDKMANAGER=$(find "$ANDROID_HOME" -name sdkmanager -type f | head -1)
+          fi
+          echo "Using $SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses > /dev/null 2>&1 || true
+          "$SDKMANAGER" --install \
             "platforms;android-36" \
             "build-tools;36.0.0" \
             "platform-tools" \

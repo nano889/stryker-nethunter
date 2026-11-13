@@ -12,8 +12,10 @@ dependencyResolutionManagement {
         google()
         mavenCentral()
         maven { url 'https://jitpack.io' }
-        maven { url 'https://jcenter.bintray.com/' }
-        jcenter()
+        // NetHunter port: jcenter() and jcenter.bintray.com removed. Bintray was
+        // shut down in 2021 and the host no longer resolves, so leaving them in
+        // made every dependency resolution attempt a dead lookup. Everything
+        // this project needs (including jcifs 1.3.17) is on mavenCentral.
     }
 }
 rootProject.name = "Stryker"
