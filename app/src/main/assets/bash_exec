@@ -1,6 +1,6 @@
 #!/system/bin/sh
 
-######### DEBIAN CHROOT LOGIN SHELL #########
+######### KALI NETHUNTER LOGIN SHELL #########
 SELF_PATH=$(readlink -f "$0")
 . "${SELF_PATH%/*}/bootroot_env"
 
@@ -12,5 +12,6 @@ exec $BUSYBOX chroot "$MNT" /usr/bin/env -i \
     TERM="${TERM:-xterm-256color}" \
     LANG=C.UTF-8 \
     LC_ALL=C.UTF-8 \
+    KALI_CHROOT=1 \
     PATH="$CHROOT_PATH" \
     "$CHROOT_SHELL" -l

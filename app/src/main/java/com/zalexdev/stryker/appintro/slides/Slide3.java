@@ -53,7 +53,16 @@ public class Slide3 extends Fragment implements IntroPage {
 
     @SuppressLint("SdCardPath")
     private static final String DOWNLOADED_CHROOT_PATH =
-            "/data/data/com.zalexdev.stryker/files/chroot64-debian.tar.gz";
+            "/data/data/com.zalexdev.stryker/files/chroot64-nethunter.tar.xz";
+
+    /**
+     * NetHunter port: the Kali rootfs archive unpacks into a single top-level
+     * directory ("kali-arm64/"). We extract into a staging directory first and
+     * then move that one directory's contents up into CHROOT_ROOT, so the chroot
+     * layout the rest of the app expects (/bin, /usr, /etc at the root) is kept.
+     */
+    private static final String STAGE_DIR = "/data/local/stryker/.nhstage";
+    private static final String ARCHIVE_ROOT = "kali-arm64";
 
     private static final int NOTIFICATION_ID = 34;
 
@@ -142,13 +151,13 @@ public class Slide3 extends Fragment implements IntroPage {
         refreshChrome();
         setStatus(StatusKind.RUNNING, "Stryker chroot", "Starting...");
         log(LogLevel.INFO, "Architecture: arm64-v8a");
-        log(LogLevel.INFO, "Stryker " + BuildConfig.VERSION_NAME + " · build " + BuildConfig.VERSION_CODE);
+        log(LogLevel.INFO, "Stryker " + BuildConfig.VERSION_NAME + " \u00b7 build " + BuildConfig.VERSION_CODE);
         if (activity instanceof AppIntroActivity && ((AppIntroActivity) activity).isUpdate()) {
             log(LogLevel.STEP, getString(R.string.setup_update_body));
         }
         if (activity instanceof AppIntroActivity && ((AppIntroActivity) activity).isMigration()) {
             log(LogLevel.WARN, "An older Linux system is installed. It will be unmounted and "
-                    + "replaced with the Debian rootfs; installed packages are not carried over.");
+                    + "replaced with the Kali NetHunter rootfs; installed packages are not carried over.");
         }
 
         new Thread(() -> {
@@ -166,7 +175,7 @@ public class Slide3 extends Fragment implements IntroPage {
             markStage(InstallStage.DOWNLOADING, RowState.ACTIVE);
             log(LogLevel.CMD, "GET " + chrootAsset.url);
             if (chrootAsset.size > 0) {
-                log(LogLevel.INFO, "Debian rootfs archive · " + formatMb(chrootAsset.size));
+                log(LogLevel.INFO, "Kali NetHunter rootfs archive \u00b7 " + formatMb(chrootAsset.size));
             }
 
             if (downloadChroot(chrootAsset)) {
@@ -176,7 +185,7 @@ public class Slide3 extends Fragment implements IntroPage {
 
                 markStage(InstallStage.UNPACKING, RowState.ACTIVE);
                 log(LogLevel.STEP, "Extracting archive into /data/local/stryker");
-                log(LogLevel.INFO, "Full Debian rootfs — extraction can take several minutes");
+                log(LogLevel.INFO, "Kali NetHunter rootfs \u2014 extraction can take several minutes");
                 runOnUi(() -> progress.setIndeterminate(true));
 
                 if (unTarFile()) {
@@ -203,9 +212,9 @@ public class Slide3 extends Fragment implements IntroPage {
                     markStage(InstallStage.DEPLOYING_EXPLOITS, RowState.ACTIVE);
                     log(LogLevel.STEP, "Deploying built-in exploits");
                     if (GuestCore.ensure(core)) {
-                        log(LogLevel.SUCCESS, "Stryker payload unpacked — /CORE, /exploits");
+                        log(LogLevel.SUCCESS, "Stryker payload unpacked \u2014 /CORE, /exploits");
                     } else {
-                        log(LogLevel.WARN, "Stryker payload did not verify — /CORE tools may be missing");
+                        log(LogLevel.WARN, "Stryker payload did not verify \u2014 /CORE tools may be missing");
                     }
                     core.deleteFile("/sdcard/Stryker/exploits/");
                     core.copyFile("/data/data/com.zalexdev.stryker/files/checker.py",
@@ -224,7 +233,7 @@ public class Slide3 extends Fragment implements IntroPage {
 
                     markStage(InstallStage.DONE, RowState.DONE);
                     setStatus(StatusKind.SUCCESS, "Stryker chroot",
-                            "Installation complete — moving on...");
+                            "Installation complete \u2014 moving on...");
                     log(LogLevel.SUCCESS, "All stages passed");
 
                     runOnUi(() -> {
@@ -234,13 +243,13 @@ public class Slide3 extends Fragment implements IntroPage {
                 } else {
                     markStage(InstallStage.UNPACKING, RowState.FAILED);
                     notificationManager.cancel(NOTIFICATION_ID);
-                    failWith("Failed to extract — "
+                    failWith("Failed to extract \u2014 "
                             + (extractFailure != null ? extractFailure : "unknown error"));
                 }
             } else {
                 markStage(InstallStage.DOWNLOADING, RowState.FAILED);
                 notificationManager.cancel(NOTIFICATION_ID);
-                failWith("Download failed — check the connection");
+                failWith("Download failed \u2014 check the connection");
             }
         }).start();
     }
@@ -270,7 +279,7 @@ public class Slide3 extends Fragment implements IntroPage {
         runOnUi(() -> {
             progress.setIndeterminate(true);
             progress.setVisibility(View.VISIBLE);
-            downloadText.setText("Connecting…");
+            downloadText.setText("Connecting\u2026");
         });
         notification = new NotificationCompat.Builder(context, context.getResources().getString(R.string.notification_channel_updater))
                 .setOngoing(true)
@@ -306,14 +315,14 @@ public class Slide3 extends Fragment implements IntroPage {
                             progress.setIndeterminate(false);
                             progress.setProgress(percentFinal, true);
                             downloadText.setText(formatMb(downloaded) + " / " + formatMb(total)
-                                    + " (" + percentFinal + "%) · " + formatSpeed(downloaded, elapsedMs)
-                                    + " · ETA " + formatEta(downloaded, total, elapsedMs));
+                                    + " (" + percentFinal + "%) \u00b7 " + formatSpeed(downloaded, elapsedMs)
+                                    + " \u00b7 ETA " + formatEta(downloaded, total, elapsedMs));
                         });
                         notification.setProgress(100, percentFinal, false);
                         notificationManager.notify(NOTIFICATION_ID, notification.build());
                     } else {
                         runOnUi(() -> downloadText.setText(formatMb(downloaded)
-                                + " · " + formatSpeed(downloaded, elapsedMs)));
+                                + " \u00b7 " + formatSpeed(downloaded, elapsedMs)));
                     }
                 });
 
@@ -322,7 +331,7 @@ public class Slide3 extends Fragment implements IntroPage {
             return false;
         }
         if (asset.sha256 == null || asset.sha256.isEmpty()) {
-            log(LogLevel.WARN, "No checksum in manifest — integrity not verified");
+            log(LogLevel.WARN, "No checksum in manifest \u2014 integrity not verified");
         } else {
             log(LogLevel.SUCCESS, "SHA-256 verified");
         }
@@ -344,11 +353,11 @@ public class Slide3 extends Fragment implements IntroPage {
     }
 
     private static String formatEta(long downloaded, long total, long elapsedMs) {
-        if (downloaded <= 0 || elapsedMs <= 0 || total <= 0) return "—";
+        if (downloaded <= 0 || elapsedMs <= 0 || total <= 0) return "\u2014";
         long remaining = total - downloaded;
         if (remaining <= 0) return "0s";
         double bytesPerSec = downloaded / (elapsedMs / 1000.0);
-        if (bytesPerSec < 1) return "—";
+        if (bytesPerSec < 1) return "\u2014";
         long sec = (long) (remaining / bytesPerSec);
         if (sec < 60) return sec + "s";
         if (sec < 3600) return String.format(Locale.US, "%dm %02ds", sec / 60, sec % 60);
@@ -364,7 +373,7 @@ public class Slide3 extends Fragment implements IntroPage {
         if (anyMount || core.isMounted() || core.checkFolder(Core.CHROOT_ROOT + "/bin")) {
             log(LogLevel.STEP, "Removing the previous Linux system");
             if (!core.purgeChroot()) {
-                log(LogLevel.ERROR, "The previous chroot is still mounted — refusing to install "
+                log(LogLevel.ERROR, "The previous chroot is still mounted \u2014 refusing to install "
                         + "over it. Reboot the device and try again.");
                 return false;
             }
@@ -396,9 +405,20 @@ public class Slide3 extends Fragment implements IntroPage {
             extractFailure = core.tarFailureReason();
             return false;
         }
-        log(LogLevel.CMD, tar + " -xzf " + DOWNLOADED_CHROOT_PATH + " -C /data/local/stryker/");
+
+        // NetHunter port: the rootfs is .tar.xz, not .tar.gz. busybox tar's -J is
+        // not guaranteed to be compiled in, but the unxz applet is, so we pipe
+        // through it explicitly. gzip archives still work via the same path.
+        boolean xz = DOWNLOADED_CHROOT_PATH.endsWith(".xz");
+        String decompress = xz
+                ? Core.BUSYBOX + "unxz -c " + DOWNLOADED_CHROOT_PATH
+                : Core.BUSYBOX + "gunzip -c " + DOWNLOADED_CHROOT_PATH;
+
+        core.customCommand("rm -rf " + STAGE_DIR + "; mkdir -p " + STAGE_DIR);
+
+        log(LogLevel.CMD, decompress + " | " + tar + " -xf - -C " + STAGE_DIR);
         ArrayList<String> out = core.customCommand(
-                tar + " -xzf " + DOWNLOADED_CHROOT_PATH + " -C /data/local/stryker/ 2>&1"
+                decompress + " | " + tar + " -xf - -C " + STAGE_DIR + " 2>&1"
                         + "; echo " + TAR_RC + "$?", 0);
 
         Integer rc = null;
@@ -408,7 +428,21 @@ public class Slide3 extends Fragment implements IntroPage {
                 catch (NumberFormatException ignored) {}
             }
         }
-        boolean unpacked = rc != null && rc == 0
+
+        // Re-root: move the archive's single top-level directory up one level.
+        boolean staged = rc != null && rc == 0
+                && core.checkFolder(STAGE_DIR + "/" + ARCHIVE_ROOT + "/usr/bin/");
+        if (staged) {
+            log(LogLevel.STEP, "Re-rooting " + ARCHIVE_ROOT + "/ into " + Core.CHROOT_ROOT);
+            core.customCommand("mkdir -p " + Core.CHROOT_ROOT);
+            core.customCommand("cd " + STAGE_DIR + "/" + ARCHIVE_ROOT
+                    + " && " + Core.BUSYBOX + " cp -a . " + Core.CHROOT_ROOT + "/ 2>&1");
+            core.customCommand("rm -rf " + STAGE_DIR);
+        } else {
+            core.customCommand("rm -rf " + STAGE_DIR);
+        }
+
+        boolean unpacked = staged
                 && (core.checkFolder(Core.CHROOT_ROOT + "/usr/bin/")
                     || core.checkFolder(Core.CHROOT_ROOT + "/bin/"));
         if (!unpacked) {
@@ -416,19 +450,21 @@ public class Slide3 extends Fragment implements IntroPage {
                 extractFailure = "the extractor was killed before it finished";
             } else if (rc != 0) {
                 extractFailure = "extractor exited with code " + rc;
+            } else {
+                extractFailure = "archive did not contain " + ARCHIVE_ROOT + "/usr/bin";
             }
             for (int i = out.size() - 1; i >= 0; i--) {
                 String l = out.get(i);
                 if (l == null) continue;
                 String t = l.trim();
                 if (t.isEmpty() || t.startsWith(TAR_RC)) continue;
-                extractFailure = (extractFailure == null ? "" : extractFailure + " — ") + t;
+                extractFailure = (extractFailure == null ? "" : extractFailure + " \u2014 ") + t;
                 break;
             }
             if (extractFailure == null) extractFailure = "the extractor reported nothing";
         }
         if (unpacked && !core.checkFile(Core.CHROOT_ROOT + "/bin/bash")) {
-            log(LogLevel.WARN, "bash not found in the rootfs — chroot commands will fail");
+            log(LogLevel.WARN, "bash not found in the rootfs \u2014 chroot commands will fail");
         }
         return unpacked;
     }

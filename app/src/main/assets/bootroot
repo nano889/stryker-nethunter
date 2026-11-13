@@ -10,7 +10,9 @@ f_chk_chroot() {
         echo "[-] $CHROOT_SHELL missing inside the chroot."
         return 1
     fi
-    if ! $BUSYBOX chroot "$MNT" /bin/uname -m > /dev/null 2>&1; then
+    # NetHunter port: Kali has no /bin/uname (it lives at /usr/bin/uname), so the
+    # upstream probe reported "Chroot is corrupted" on a perfectly good rootfs.
+    if ! $BUSYBOX chroot "$MNT" /usr/bin/uname -m > /dev/null 2>&1; then
         echo "[-] Chroot is corrupted. Error code [-0]"
         return 1
     fi
@@ -139,15 +141,30 @@ f_mount_fs() {
 
     ######### SET NETWORK AND HOSTNAME ########
     $BUSYBOX sysctl -w net.ipv4.ip_forward=1
-    echo "127.0.0.1    localhost stryker"              > "$MNT/etc/hosts"
+    # NetHunter port: keep a Kali-flavoured hostname so apt/dpkg and the Kali
+    # tooling report a consistent release instead of inheriting "localhost".
+    echo "127.0.0.1    localhost kali"              > "$MNT/etc/hosts"
     echo "::1    localhost ip6-localhost ip6-loopback" >> "$MNT/etc/hosts"
-    echo "stryker"                                     > "$MNT/etc/hostname"
+    echo "kali"                                        > "$MNT/etc/hostname"
 
     ######### APT IN A CHROOT #########
     mkdir -p "$MNT/etc/apt/apt.conf.d"
     printf 'APT::Sandbox::User "root";\nAcquire::Retries "3";\n' \
         > "$MNT/etc/apt/apt.conf.d/99stryker"
     mkdir -p "$MNT/var/lib/apt/lists/partial" "$MNT/var/cache/apt/archives/partial"
+
+    ######### KALI: make sure the archive keyring survives extraction ########
+    # The NetHunter rootfs pins its repo with Signed-By pointing at this keyring.
+    # If the file is missing or unreadable every apt-get update fails signature
+    # verification, so repair the mode here and warn loudly if it is absent.
+    if [ -f "$MNT/usr/share/keyrings/kali-archive-keyring.gpg" ]; then
+        chmod 644 "$MNT/usr/share/keyrings/kali-archive-keyring.gpg" 2> /dev/null
+    else
+        echo "[!] kali-archive-keyring.gpg missing - apt will fail to verify the repo"
+    fi
+    # Kali ships /etc/resolv.conf as a symlink; our freshly written file must win.
+    [ -L "$MNT/etc/resolv.conf" ] && rm -f "$MNT/etc/resolv.conf"
+    [ -f "$MNT/etc/resolv.conf" ] || : > "$MNT/etc/resolv.conf"
 
     ######### SET STRYKER SHELL PROMPT #########
     if [ -f "/data/data/$APP_PGK_NAME/files/stryker_profile.sh" ]; then

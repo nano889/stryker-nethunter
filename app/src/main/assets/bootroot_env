@@ -1,15 +1,18 @@
 #!/system/bin/sh
-### Bootroot environment. stryker
+### Bootroot environment. stryker — Kali NetHunter port
 
 unset LD_PRELOAD
 
 ## Define the owner app package name.
 APP_PGK_NAME=com.zalexdev.stryker
 
-## Login shell used inside the Debian chroot.
+## Login shell used inside the chroot.
+## The Kali NetHunter rootfs ships bash at /usr/bin/bash with /bin -> usr/bin,
+## so /bin/bash resolves and stays compatible with the upstream scripts.
 CHROOT_SHELL=/bin/bash
 
 ## PATH handed to every in-chroot process.
+## Kali keeps sbin binaries under /usr/sbin, which is already first in this list.
 CHROOT_PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 ## Android-side PATH for the helper scripts themselves.
@@ -26,6 +29,10 @@ done
 
 ## Define chroot path to MNT variable.
 MNT="/data/local/stryker/release"
+
+## Kali NetHunter identifies itself through these; Android does not set them.
+## Exporting them keeps apt, dpkg and the Kali tooling from guessing a release.
+export KALI_CHROOT=1
 
 ## Validate busybox path.
 if [ ! -x "$BUSYBOX" ]; then

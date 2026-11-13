@@ -1,13 +1,14 @@
-# Stryker chroot shell environment.
+# Stryker chroot shell environment — Kali NetHunter port.
 #
 # Deployed into the chroot at /etc/stryker_profile.sh and sourced from
 # /etc/profile, so every interactive login shell the terminal opens (it enters
-# via `bash -l`) gets a cool, root-aware, blue two-line prompt instead of the
-# bland default. Also adds a few quality-of-life aliases.
+# via `bash -l`) gets a root-aware two-line prompt. Kali's /etc/profile already
+# runs /etc/profile.d/*.sh through run-parts, so this stays additive and does
+# not replace anything the image configures.
 #
 # Note: \h is intentionally NOT used — the chroot shares the device UTS
 # namespace, so \h is the Android hostname ("localhost"), which is exactly the
-# dull prompt this replaces. We brand the prompt "⚡Stryker" instead.
+# dull prompt this replaces. We brand the prompt "Stryker" instead.
 
 # Only dress up interactive shells.
 case "$-" in

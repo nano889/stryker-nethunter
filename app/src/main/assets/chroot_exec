@@ -1,11 +1,12 @@
 #!/system/bin/sh
 
-######### DEBIAN CHROOT EXEC #########
+######### KALI NETHUNTER CHROOT EXEC #########
 SELF_PATH=$(readlink -f "$0")
 . "${SELF_PATH%/*}/bootroot_env"
 
 [ $# -eq 0 ] && set -- "$CHROOT_SHELL"
 
+# NetHunter port: Kali tooling reads these; env -i drops everything else.
 exec $BUSYBOX chroot "$MNT" /usr/bin/env -i \
     HOME=/root \
     USER=root \
@@ -15,5 +16,6 @@ exec $BUSYBOX chroot "$MNT" /usr/bin/env -i \
     LANG=C.UTF-8 \
     LC_ALL=C.UTF-8 \
     DEBIAN_FRONTEND=noninteractive \
+    KALI_CHROOT=1 \
     PATH="$CHROOT_PATH" \
     $1

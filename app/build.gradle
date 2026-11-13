@@ -4,13 +4,21 @@ plugins {
 
 android {
     namespace 'com.zalexdev.stryker'
-    compileSdk 37
-    ndkVersion '25.1.8937393'
+    // NetHunter port: 36, not 37. AGP 8.13.2 supports up to API 36; API 37
+    // requires AGP 9.1.1+, which conflicts with the kotlin-android plugin this
+    // project uses. Nothing in the port depends on 37.
+    compileSdk 36
+    // NetHunter port: the NDK is no longer required for :app. The only native
+    // module this module compiled itself was libprotected.so (jni/protected.c +
+    // neigh.c); the prebuilt arm64-v8a copy that ships in the upstream APK is
+    // checked into src/main/jniLibs/arm64-v8a/, so :app no longer needs an NDK.
+    // NOTE: the :terminal module still compiles C++ via CMake and does need it.
+    // ndkVersion '25.1.8937393'
 
     defaultConfig {
         applicationId "com.zalexdev.stryker"
         minSdk 24
-        targetSdk 37
+        targetSdk 36
         versionCode 651
         versionName "6.5.1"
 
@@ -59,11 +67,13 @@ android {
         buildConfig = true
     }
 
-    externalNativeBuild {
-        ndkBuild {
-            path 'src/main/jni/Android.mk'
-        }
-    }
+    // NetHunter port: externalNativeBuild removed for :app — libprotected.so is
+    // prebuilt in src/main/jniLibs/arm64-v8a/ (see the note at the top).
+    // externalNativeBuild {
+    //     ndkBuild {
+    //         path 'src/main/jni/Android.mk'
+    //     }
+    // }
 
     packagingOptions {
         resources.excludes.add("META-INF/*")
@@ -83,7 +93,9 @@ android {
     }
 
     aaptOptions {
-        noCompress "tar.gz", "gz", "imgz", "db", "sqlite", "img", "so", "qemu-system-aarch64", "Image"
+        // NetHunter port: "xz" added — the Kali rootfs is .tar.xz and must stay
+        // uncompressed inside the APK so the extractor can stream it.
+        noCompress "tar.gz", "gz", "xz", "imgz", "db", "sqlite", "img", "so", "qemu-system-aarch64", "Image"
     }
 
     lint {
